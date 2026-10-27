@@ -20,9 +20,30 @@
 // Usage: https://yotingo.github.io/open-session/?s=local_<uuid>
 // Hands claude://claude.ai/epitaxy/<session> to the desktop app. Artifact pages cannot open claude:// links
 // themselves (their frame blocks it), but they can open this https page in the browser.
+// New-session mode: https://yotingo.github.io/open-session/#new=<prompt>&folder=<absolute path>
+// Hands claude://code/new?folder=...&q=... to the desktop app, which opens a new session with the prompt typed but not
+// sent (and asks to confirm the folder). The prompt rides in the fragment, which the browser never sends to the server.
 (function () {
-  var s = new URLSearchParams(location.search).get("s") || "";
   var h = document.getElementById("h"), p = document.getElementById("p");
+  var frag = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (frag.has("new")) {
+    var q = (frag.get("new") || "").slice(0, 14000), folder = frag.get("folder") || "";
+    if (!q || (folder && !/^([A-Za-z]:[\\/]|\/)/.test(folder))) {
+      h.textContent = "Nothing to open";
+      p.textContent = "The link should end in #new= followed by the prompt, and an optional absolute folder.";
+      return;
+    }
+    var link = "claude://code/new?" + (folder ? "folder=" + encodeURIComponent(folder) + "&" : "") + "q=" + encodeURIComponent(q);
+    h.textContent = "Opening a new session in Claude…";
+    var b = document.createElement("a");
+    b.href = link;
+    b.textContent = "Open the new session in Claude";
+    p.append("If nothing happens, ", b, ". The prompt is typed for you; press Enter to send it. You can close this tab afterwards.");
+    history.replaceState(null, "", location.pathname);
+    location.replace(link);
+    return;
+  }
+  var s = new URLSearchParams(location.search).get("s") || "";
   if (!/^local_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s)) {
     h.textContent = "No session given";
     p.textContent = "The link should end in ?s=local_ followed by the session id.";
